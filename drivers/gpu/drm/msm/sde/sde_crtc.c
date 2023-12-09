@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -45,6 +45,10 @@
 
 #define SDE_PSTATES_MAX (SDE_STAGE_MAX * 4)
 #define SDE_MULTIRECT_PLANE_MAX (SDE_STAGE_MAX * 2)
+
+#ifdef CONFIG_LGE_PM_PRM
+#include "fbcn/lge_intm.h"
+#endif
 
 struct sde_crtc_custom_events {
 	u32 event;
@@ -3083,16 +3087,15 @@ static void _sde_crtc_set_input_fence_timeout(struct sde_crtc_state *cstate)
 	cstate->input_fence_timeout_ns *= NSEC_PER_MSEC;
 }
 
-/**
- * _sde_crtc_clear_dim_layers_v1 - clear all dim layer settings
- * @cstate:      Pointer to sde crtc state
- */
-static void _sde_crtc_clear_dim_layers_v1(struct sde_crtc_state *cstate)
+void _sde_crtc_clear_dim_layers_v1(struct drm_crtc_state *state)
 {
 	u32 i;
+	struct sde_crtc_state *cstate;
 
-	if (!cstate)
+	if (!state)
 		return;
+
+	cstate = to_sde_crtc_state(state);
 
 	for (i = 0; i < cstate->num_dim_layers; i++)
 		memset(&cstate->dim_layer[i], 0, sizeof(cstate->dim_layer[i]));
@@ -3129,7 +3132,7 @@ static void _sde_crtc_set_dim_layer_v1(struct drm_crtc *crtc,
 
 	if (!usr_ptr) {
 		/* usr_ptr is null when setting the default property value */
-		_sde_crtc_clear_dim_layers_v1(cstate);
+		_sde_crtc_clear_dim_layers_v1(&cstate->base);
 		SDE_DEBUG("dim_layer data removed\n");
 		return;
 	}
@@ -3713,6 +3716,8 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	struct sde_splash_display *splash_display;
 	bool cont_splash_enabled = false;
 	size_t i;
+	struct sde_rm *rm ;
+	u32 mixer_required =0;
 
 	if (!crtc) {
 		SDE_ERROR("invalid crtc\n");
@@ -3740,6 +3745,20 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	sde_crtc = to_sde_crtc(crtc);
 	dev = crtc->dev;
 
+	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
+		if ((encoder->crtc != crtc) || (encoder->encoder_type!=DRM_MODE_ENCODER_TMDS))
+			continue;
+		rm = &sde_kms->rm;
+
+		if (rm ==NULL)
+			continue;
+		mixer_required = sde_rm_get_nmixer(rm,encoder);
+		if((0<mixer_required && mixer_required<=CRTC_DUAL_MIXERS) && (sde_crtc->num_mixers!=mixer_required)){
+			SDE_ERROR("Mismatch between required number of mixers(%d) and allocated mixers(%d) for (%d)encoder\n",mixer_required,sde_crtc->num_mixers,encoder->base.id);
+			sde_crtc->num_mixers =0;
+		}
+	}
+
 	if (!sde_crtc->num_mixers) {
 		_sde_crtc_setup_mixers(crtc);
 		_sde_crtc_setup_is_ppsplit(crtc->state);
@@ -3753,6 +3772,9 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 		/* encoder will trigger pending mask now */
 		sde_encoder_trigger_kickoff_pending(encoder);
 	}
+
+	 /* update performance setting */
+		sde_core_perf_crtc_update(crtc, 1, false);
 
 	/*
 	 * If no mixers have been allocated in sde_crtc_atomic_check(),
@@ -3899,9 +3921,6 @@ static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
 		}
 		cstate->rsc_update = true;
 	}
-
-	/* update performance setting before crtc kickoff */
-	sde_core_perf_crtc_update(crtc, 1, false);
 
 	/*
 	 * Final plane updates: Give each plane a chance to complete all
@@ -4384,6 +4403,11 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 				SDE_EVTLOG_FUNC_CASE2);
 	}
 	sde_crtc->play_count++;
+
+#ifdef CONFIG_LGE_PM_PRM
+	if (lge_prm_get_info(LGE_PRM_INFO_FBCN_ENABLED))
+		lge_intv_notify(ktime_get());
+#endif
 
 	/*
 	 * For SYNC inline modes, delay the kick off until after the

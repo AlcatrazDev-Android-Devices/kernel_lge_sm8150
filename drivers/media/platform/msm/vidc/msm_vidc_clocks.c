@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -491,6 +491,19 @@ static unsigned long msm_vidc_max_freq(struct msm_vidc_core *core)
 	return freq;
 }
 
+#ifdef CONFIG_MACH_LGE
+static unsigned long msm_vidc_higher_freq(struct msm_vidc_inst *inst)
+{
+	struct clock_data *dcvs = NULL;
+	unsigned long freq = 0;
+
+	dcvs = &inst->clk_data;
+	freq = dcvs->load_higher;
+	dprintk(VIDC_PROF, "Higher rate = %lu\n", freq);
+	return freq;
+}
+#endif
+
 void msm_comm_free_freq_table(struct msm_vidc_inst *inst)
 {
 	struct vidc_freq_data *temp, *next;
@@ -732,6 +745,10 @@ static unsigned long msm_vidc_calc_freq(struct msm_vidc_inst *inst,
 		allowed_clks_tbl[i+1].clock_rate : dcvs->load_norm;
 	dcvs->load_high = i > 0 ? allowed_clks_tbl[i-1].clock_rate :
 		dcvs->load_norm;
+#ifdef CONFIG_MACH_LGE
+	dcvs->load_higher = i > 1 ? allowed_clks_tbl[i-2].clock_rate :
+		dcvs->load_high;
+#endif
 
 	dprintk(VIDC_PROF,
 		"%s: inst %pK: %x : filled len %d required freq %lu load_norm %d\n",
@@ -979,7 +996,14 @@ int msm_comm_scale_clocks(struct msm_vidc_inst *inst)
 
 	if (inst->clk_data.buffer_counter < DCVS_FTB_WINDOW || is_turbo ||
 		msm_vidc_clock_voting) {
+#ifdef CONFIG_MACH_LGE
+		if (is_turbo)
+			inst->clk_data.min_freq = msm_vidc_higher_freq(inst);
+		else
+			inst->clk_data.min_freq = msm_vidc_max_freq(inst->core);
+#else
 		inst->clk_data.min_freq = msm_vidc_max_freq(inst->core);
+#endif
 		inst->clk_data.dcvs_flags = 0;
 	}
 
@@ -1457,6 +1481,7 @@ static inline int msm_vidc_power_save_mode_enable(struct msm_vidc_inst *inst,
 	u32 hq_mbs_per_sec = 0;
 	struct msm_vidc_core *core;
 	struct msm_vidc_inst *instance = NULL;
+	int complexity;
 
 	core = inst->core;
 	hdev = inst->core->device;
@@ -1492,6 +1517,10 @@ static inline int msm_vidc_power_save_mode_enable(struct msm_vidc_inst *inst,
 	if (rc_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CQ)
 		enable = false;
 
+	complexity = msm_comm_g_ctrl_for_id(inst,
+		V4L2_CID_MPEG_VIDC_VENC_COMPLEXITY);
+	if (!is_realtime_session(inst) && !complexity)
+		enable = true;
 	prop_id = HAL_CONFIG_VENC_PERF_MODE;
 	venc_mode = enable ? HAL_PERF_MODE_POWER_SAVE :
 		HAL_PERF_MODE_POWER_MAX_QUALITY;
@@ -1579,6 +1608,7 @@ int msm_vidc_decide_core_and_power_mode(struct msm_vidc_inst *inst)
 	u32 current_inst_load = 0, current_inst_lp_load = 0,
 		min_load = 0, min_lp_load = 0;
 	u32 min_core_id, min_lp_core_id;
+	u32 complexity;
 
 	if (!inst || !inst->core || !inst->core->device) {
 		dprintk(VIDC_ERR,
@@ -1688,9 +1718,21 @@ int msm_vidc_decide_core_and_power_mode(struct msm_vidc_inst *inst)
 				inst->clk_data.core_id);
 		msm_vidc_move_core_to_power_save_mode(core, min_lp_core_id);
 	} else {
-		rc = -EINVAL;
-		dprintk(VIDC_ERR,
-			"Sorry ... Core Can't support this load\n");
+		complexity = msm_comm_g_ctrl_for_id(inst,
+			V4L2_CID_MPEG_VIDC_VENC_COMPLEXITY);
+		if (!is_realtime_session(inst)) {
+			if (inst->session_type == MSM_VIDC_ENCODER)
+				msm_vidc_power_save_mode_enable(inst,
+					(complexity == 0));
+			inst->clk_data.core_id = min_core_id;
+			dprintk(VIDC_DBG, "Supporting NRT session");
+			goto decision_done;
+
+		} else {
+			rc = -EINVAL;
+			dprintk(VIDC_ERR,
+				"Sorry ... Core Can't support this load\n");
+		}
 		return rc;
 	}
 
