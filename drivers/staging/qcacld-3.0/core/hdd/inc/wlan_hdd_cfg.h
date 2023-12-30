@@ -615,33 +615,6 @@ enum hdd_dot11_mode {
 
 /*
  * <ini>
- * honour_nl_scan_policy_flags - Whether to honour NL80211 scan policy flags
- * @Min: 0
- * @Max: 1
- * @Default: 1
- *
- * This parameter will decide whether to honour scan flags such as
- * NL80211_SCAN_FLAG_HIGH_ACCURACY , NL80211_SCAN_FLAG_LOW_SPAN,
- * NL80211_SCAN_FLAG_LOW_POWER.
- * Acceptable values for this:
- * 0: Config is disabled
- * 1: Config is enabled
- *
- * Related: None
- *
- * Supported Feature: Scan
- *
- * Usage: Internal
- *
- * </ini>
- */
-#define CFG_HONOUR_NL_SCAN_POLICY_FLAGS           "honour_nl_scan_policy_flags"
-#define CFG_HONOUR_NL_SCAN_POLICY_FLAGS_MIN       (0)
-#define CFG_HONOUR_NL_SCAN_POLICY_FLAGS_MAX       (1)
-#define CFG_HONOUR_NL_SCAN_POLICY_FLAGS_DEFAULT   (1)
-
-/*
- * <ini>
  * wake_lock_in_user_scan - use wake lock during user scan
  * @Min: 0
  * @Max: 1
@@ -8578,8 +8551,11 @@ enum hdd_link_speed_rpt_type {
 #define CFG_SAP_11AC_OVERRIDE_NAME             "gSAP11ACOverride"
 #define CFG_SAP_11AC_OVERRIDE_MIN              (0)
 #define CFG_SAP_11AC_OVERRIDE_MAX              (1)
+#ifdef FEATURE_SUPPORT_LGE
+#define CFG_SAP_11AC_OVERRIDE_DEFAULT          (1)
+#else
 #define CFG_SAP_11AC_OVERRIDE_DEFAULT          (0)
-
+#endif
 /*
  * <ini>
  * gGO11ACOverride - Override bw to 11ac for P2P GO
@@ -11271,8 +11247,11 @@ enum hdd_wext_control {
 #define CFG_PRIVATE_WEXT_CONTROL_NAME           "private_wext_control"
 #define CFG_PRIVATE_WEXT_CONTROL_MIN            (hdd_wext_disabled)
 #define CFG_PRIVATE_WEXT_CONTROL_MAX            (hdd_wext_enabled)
+#ifdef FEATURE_SUPPORT_LGE
+#define CFG_PRIVATE_WEXT_CONTROL_DEFAULT        (hdd_wext_enabled)
+#else
 #define CFG_PRIVATE_WEXT_CONTROL_DEFAULT        (hdd_wext_deprecated)
-
+#endif
 /*
  * <ini>
  * gper_roam_mon_time - Minimum time required in seconds to
@@ -14663,7 +14642,7 @@ enum hdd_external_acs_policy {
 #define CFG_BTM_ENABLE_NAME      "btm_offload_config"
 #define CFG_BTM_ENABLE_MIN       (0x00000000)
 #define CFG_BTM_ENABLE_MAX       (0xffffffff)
-#define CFG_BTM_ENABLE_DEFAULT   (0x00000001)
+#define CFG_BTM_ENABLE_DEFAULT   (0x00000000) //LGE_Configuration.
 
 /*
  * <ini>
@@ -16386,7 +16365,6 @@ struct hdd_config {
 	uint8_t enableBypass11d;
 	uint8_t enableDFSChnlScan;
 	bool wake_lock_in_user_scan;
-	bool honour_nl_scan_policy_flags;
 	uint8_t enable_dfs_pno_chnl_scan;
 	uint8_t enableDynamicDTIM;
 	uint8_t ShortGI40MhzEnable;

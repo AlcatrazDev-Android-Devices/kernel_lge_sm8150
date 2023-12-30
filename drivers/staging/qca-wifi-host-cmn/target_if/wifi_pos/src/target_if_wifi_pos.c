@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -271,7 +271,7 @@ static int wifi_pos_oem_err_rpt_ev_handler(ol_scn_t scn, uint8_t *buf,
 
 /**
  * wifi_pos_oem_data_req() - start OEM data request to target
- * @psoc: the pointer to psoc object manager
+ * @wma_handle: wma handle
  * @req: start request params
  *
  * Return: QDF_STATUS

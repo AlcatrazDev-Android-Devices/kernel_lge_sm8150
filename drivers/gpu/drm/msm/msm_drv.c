@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -59,6 +59,12 @@
 #define MSM_VERSION_MAJOR	1
 #define MSM_VERSION_MINOR	2
 #define MSM_VERSION_PATCHLEVEL	0
+
+static DEFINE_MUTEX(msm_release_lock);
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+extern char* get_ddic_name(void);
+#endif
 
 static void msm_fb_output_poll_changed(struct drm_device *dev)
 {
@@ -979,6 +985,13 @@ static void msm_lastclose(struct drm_device *dev)
 	if (kms && kms->funcs && kms->funcs->check_for_splash
 		&& kms->funcs->check_for_splash(kms))
 		return;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	/* To prevent device from shutdown before device is probed */
+	if(!strcmp(get_ddic_name(), "dsi_sim_cmd")) {
+		pr_err("[Display][%s] To avoid crash with no panel \n", __func__);
+		return;
+	}
+#endif
 
 	/*
 	 * clean up vblank disable immediately as this is the last close.
@@ -1503,14 +1516,27 @@ void msm_mode_object_event_notify(struct drm_mode_object *obj,
 
 static int msm_release(struct inode *inode, struct file *filp)
 {
-	struct drm_file *file_priv = filp->private_data;
-	struct drm_minor *minor = file_priv->minor;
-	struct drm_device *dev = minor->dev;
-	struct msm_drm_private *priv = dev->dev_private;
+	struct drm_file *file_priv;
+	struct drm_minor *minor;
+	struct drm_device *dev;
+	struct msm_drm_private *priv;
 	struct msm_drm_event *node, *temp, *tmp_node;
 	u32 count;
 	unsigned long flags;
 	LIST_HEAD(tmp_head);
+	int ret = 0;
+
+	mutex_lock(&msm_release_lock);
+
+	file_priv = filp->private_data;
+	if (!file_priv) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	minor = file_priv->minor;
+	dev = minor->dev;
+	priv = dev->dev_private;
 
 	spin_lock_irqsave(&dev->event_lock, flags);
 	list_for_each_entry_safe(node, temp, &priv->client_event_list,
@@ -1538,7 +1564,18 @@ static int msm_release(struct inode *inode, struct file *filp)
 		kfree(node);
 	}
 
-	return drm_release(inode, filp);
+	msm_preclose(dev, file_priv);
+
+       /**
+	* Handle preclose operation here for removing fb's whose
+	* refcount > 1. This operation is not triggered from upstream
+	* drm as msm_driver does not support DRIVER_LEGACY feature.
+	*/
+	ret = drm_release(inode, filp);
+	filp->private_data = NULL;
+end:
+	mutex_unlock(&msm_release_lock);
+	return ret;
 }
 
 /**
@@ -1637,7 +1674,7 @@ static int msm_ioctl_power_ctrl(struct drm_device *dev, void *data,
 			ctx->enable_refcnt = old_cnt;
 	}
 
-	pr_debug("pid %d enable %d, refcnt %d, vote_req %d\n",
+	pr_info("pid %d enable %d, refcnt %d, vote_req %d\n",
 			current->pid, power_ctrl->enable, ctx->enable_refcnt,
 			vote_req);
 	SDE_EVT32(current->pid, power_ctrl->enable, ctx->enable_refcnt,
@@ -1692,7 +1729,6 @@ static struct drm_driver msm_driver = {
 				DRIVER_ATOMIC |
 				DRIVER_MODESET,
 	.open               = msm_open,
-	.preclose           = msm_preclose,
 	.postclose          = msm_postclose,
 	.lastclose          = msm_lastclose,
 	.irq_handler        = msm_irq,

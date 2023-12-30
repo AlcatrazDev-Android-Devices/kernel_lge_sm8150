@@ -3134,7 +3134,11 @@ int hdd_wlan_start_modules(struct hdd_context *hdd_ctx, bool reinit)
 	hdd_info("Wlan transitioned (now ENABLED)");
 
 	hdd_ctx->start_modules_in_progress = false;
-
+#ifdef FEATURE_SUPPORT_LGE
+/*LGE_CHNAGE_S, DRIVER scan_suppress command, 2017-07-12, moon-wifi@lge.com*/
+    wlan_hdd_set_scan_suppress(0);
+    /*LGE_CHNAGE_E, DRIVER scan_suppress command, 2017-07-12, moon-wifi@lge.com*/
+#endif
 	mutex_unlock(&hdd_ctx->iface_change_lock);
 
 	hdd_exit();
@@ -11347,7 +11351,6 @@ int hdd_configure_cds(struct hdd_context *hdd_ctx)
 	uint32_t num_11b_tx_chains = 0;
 	uint32_t num_11ag_tx_chains = 0;
 	struct policy_mgr_dp_cbacks dp_cbs = {0};
-	qdf_device_t qdf_ctx;
 
 	mac_handle = hdd_ctx->mac_handle;
 
@@ -11409,14 +11412,8 @@ int hdd_configure_cds(struct hdd_context *hdd_ctx)
 	 * IPA module before configuring them to FW. Sequence required as crash
 	 * observed otherwise.
 	 */
-
-	qdf_ctx = cds_get_context(QDF_MODULE_ID_QDF_DEVICE);
-	if (!qdf_ctx) {
-		hdd_err("QDF device context is NULL");
-		goto out;
-	}
-
-	if (ucfg_ipa_uc_ol_init(hdd_ctx->pdev, qdf_ctx)) {
+	if (ucfg_ipa_uc_ol_init(hdd_ctx->pdev,
+				cds_get_context(QDF_MODULE_ID_QDF_DEVICE))) {
 		hdd_err("Failed to setup pipes");
 		goto out;
 	}
@@ -13434,7 +13431,11 @@ static ssize_t wlan_boot_cb(struct kobject *kobj,
 			    const char *buf,
 			    size_t count)
 {
-
+// [LGE_CHANGE_S] 2017.06.15, neo-wifi@lge.com, Wi-Fi interface registeration
+#ifdef FEATURE_SUPPORT_LGE
+    hdd_fln("%s: Wi-Fi Initialization is Triggered()\n", __func__);
+#endif
+// [LGE_CHANGE_E] 2017.06.15, neo-wifi@lge.com, Wi-Fi interface registeration
 	if (wlan_loader->loaded_state) {
 		hdd_fln("wlan driver already initialized");
 		return -EALREADY;
@@ -14499,8 +14500,6 @@ static int hdd_update_scan_config(struct hdd_context *hdd_ctx)
 	scan_cfg.scan_dwell_time_mode = cfg->scan_adaptive_dwell_mode;
 	scan_cfg.scan_dwell_time_mode_nc =
 		cfg->scan_adaptive_dwell_mode_nc;
-	scan_cfg.honour_nl_scan_policy_flags =
-		cfg->honour_nl_scan_policy_flags;
 	scan_cfg.is_snr_monitoring_enabled = cfg->fEnableSNRMonitoring;
 	scan_cfg.usr_cfg_probe_rpt_time = cfg->scan_probe_repeat_time;
 	scan_cfg.usr_cfg_num_probes = cfg->scan_num_probes;

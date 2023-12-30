@@ -334,10 +334,13 @@ ifeq ($(CONFIG_DEBUG_FS), y)
        # configuration.
        CONFIG_WLAN_DEBUGFS := y
 
-       CONFIG_WLAN_POWER_DEBUGFS := y
+       #CONFIG_WLAN_POWER_DEBUGFS := y
 
        CONFIG_WLAN_MWS_INFO_DEBUGFS := y
 endif
+
+# fix build error for user version (userdebug is ok)
+CONFIG_WLAN_POWER_DEBUGFS := y
 
 # Feature flags which are not (currently) configurable via Kconfig
 

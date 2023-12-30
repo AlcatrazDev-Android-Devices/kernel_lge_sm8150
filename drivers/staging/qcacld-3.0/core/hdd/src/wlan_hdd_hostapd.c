@@ -3561,6 +3561,11 @@ static __iw_softap_setparam(struct net_device *dev,
 		return -EINVAL;
 	}
 
+// [LGE_CHANGE_S] 2017.04.26, neo-wifi@lge.com, Add Reset Command for KPI log
+#ifdef FEATURE_SUPPORT_LGE
+	hdd_err("__iw_softap_setparam() : Cmd : %d", sub_cmd);
+#endif
+// [LGE_CHANGE_E] 2017.04.26, neo-wifi@lge.com, Add Reset Command for KPI log
 	switch (sub_cmd) {
 	case QCASAP_SET_RADAR_DBG:
 		hdd_debug("QCASAP_SET_RADAR_DBG called with: value: %x",
@@ -3696,6 +3701,19 @@ static __iw_softap_setparam(struct net_device *dev,
 		ret = wma_cli_set_command(adapter->session_id,
 					  WMA_VDEV_TXRX_FWSTATS_ENABLE_CMDID,
 					  set_value, VDEV_CMD);
+// [LGE_CHANGE_S] 2017.04.26, neo-wifi@lge.com, Add Reset Command for KPI log
+#ifdef FEATURE_SUPPORT_LGE
+	{
+		struct station_info info;
+		ret = wma_cli_set_command(adapter->session_id,
+				  WMA_VDEV_TXRX_FWSTATS_RESET_CMDID,
+				  set_value, VDEV_CMD);
+		if (adapter->device_mode == QDF_SAP_MODE) {
+			wlan_hdd_get_sap_stats(adapter, &info);
+		}
+	}
+#endif
+// [LGE_CHANGE_E] 2017.04.26, neo-wifi@lge.com, Add Reset Command for KPI log
 		break;
 	}
 
@@ -8670,10 +8688,6 @@ static int __wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 		struct hdd_hostapd_state *hostapd_state =
 			WLAN_HDD_GET_HOSTAP_STATE_PTR(adapter);
 
-		/* Set the stop_bss_in_progress flag */
-		wlansap_set_stop_bss_inprogress(
-			WLAN_HDD_GET_SAP_CTX_PTR(adapter), true);
-
 		qdf_event_reset(&hostapd_state->qdf_stop_bss_event);
 		status = wlansap_stop_bss(WLAN_HDD_GET_SAP_CTX_PTR(adapter));
 		if (QDF_IS_STATUS_SUCCESS(status)) {
@@ -8689,10 +8703,6 @@ static int __wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 		}
 		clear_bit(SOFTAP_BSS_STARTED, &adapter->event_flags);
 		hdd_stop_tsf_sync(adapter);
-
-		/* Clear the stop_bss_in_progress flag */
-		wlansap_set_stop_bss_inprogress(
-			WLAN_HDD_GET_SAP_CTX_PTR(adapter), false);
 
 		/*BSS stopped, clear the active sessions for this device mode*/
 		policy_mgr_decr_session_set_pcl(hdd_ctx->psoc,

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2020,2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -60,11 +60,17 @@
 #define QCOM_ICE_ENCRYPT	0x1
 #define QCOM_ICE_DECRYPT	0x2
 #define QCOM_SECT_LEN_IN_BYTE	512
+#ifdef CONFIG_MACH_LGE
+#define QCOM_UD_FOOTER_SIZE	0x0000 /* LGE does not include the footer in userdata */
+#else
 #define QCOM_UD_FOOTER_SIZE	0x4000
+#endif
 #define QCOM_UD_FOOTER_SECS	(QCOM_UD_FOOTER_SIZE / QCOM_SECT_LEN_IN_BYTE)
 
 #define ICE_CRYPTO_CXT_FDE 1
 #define ICE_CRYPTO_CXT_FBE 2
+
+#define ICE_FDE_KEY_INDEX 31
 
 static int ice_fde_flag;
 struct ice_clk_info {
@@ -147,6 +153,11 @@ static int qti_ice_setting_config(struct request *req,
 			setting->encr_bypass = true;
 			setting->decr_bypass = true;
 		}
+		/* Qseecom now sets the FDE key to slot 31 by default, instead
+		 * of slot 0, so use the same slot here during read/write
+		 */
+		if (cxt == ICE_CRYPTO_CXT_FDE)
+			setting->crypto_data.key_index = ICE_FDE_KEY_INDEX;
 	}
 
 	return 0;

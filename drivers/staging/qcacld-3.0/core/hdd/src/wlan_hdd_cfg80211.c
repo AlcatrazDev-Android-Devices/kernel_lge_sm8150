@@ -15504,7 +15504,11 @@ int wlan_hdd_cfg80211_init(struct device *dev,
 	    || pCfg->isEseIniFeatureEnabled
 #endif
 	    ) {
+// LGE_CHANGE_S, Do not use SUPPORTS_FW_ROAM because we support BSSID selection by framework
+#ifndef FEATURE_SUPPORT_LGE
 		wiphy->flags |= WIPHY_FLAG_SUPPORTS_FW_ROAM;
+#endif
+// LGE_CHANGE_E, Do not use SUPPORTS_FW_ROAM because we support BSSID selection by framework
 	}
 #ifdef FEATURE_WLAN_TDLS
 	wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS
@@ -16918,6 +16922,11 @@ static int __wlan_hdd_cfg80211_add_key(struct wiphy *wiphy,
 		setKey.keyDirection = eSIR_TX_RX;
 		qdf_mem_copy(setKey.peerMac.bytes, mac_addr, QDF_MAC_ADDR_SIZE);
 	}
+
+	cdp_peer_flush_frags(cds_get_context(QDF_MODULE_ID_SOC),
+			     cds_get_context(QDF_MODULE_ID_TXRX),
+			     adapter->session_id, setKey.peerMac.bytes);
+
 	if ((QDF_IBSS_MODE == adapter->device_mode) && !pairwise) {
 		/* if a key is already installed, block all subsequent ones */
 		if (adapter->session.station.ibss_enc_key_installed) {

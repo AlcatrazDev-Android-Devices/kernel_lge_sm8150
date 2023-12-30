@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013, Sony Mobile Communications AB.
- * Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -580,6 +580,10 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 #ifdef CONFIG_DEBUG_FS
 #include <linux/seq_file.h>
 
+#ifdef CONFIG_LGE_PM
+extern bool msm_gpio_check_access(int gpio);
+#endif
+
 static void msm_gpio_dbg_show_one(struct seq_file *s,
 				  struct pinctrl_dev *pctldev,
 				  struct gpio_chip *chip,
@@ -622,8 +626,15 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
+#ifdef CONFIG_LGE_PM
+		if(msm_gpio_check_access(gpio) == true) {
+			msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
+			seq_puts(s, "\n");
+		}
+#else
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
 		seq_puts(s, "\n");
+#endif
 	}
 }
 
@@ -2048,6 +2059,35 @@ static struct syscore_ops msm_pinctrl_pm_ops = {
 	.suspend = msm_pinctrl_suspend,
 	.resume = msm_pinctrl_resume,
 };
+
+/*
+ * msm_gpio_mpm_wake_set - API to make interrupt wakeup capable
+ * @gpio:       Gpio number to make interrupt wakeup capable
+ * @enable:     Enable/Disable wakeup capability
+ */
+int msm_gpio_mpm_wake_set(unsigned int gpio, bool enable)
+{
+	const struct msm_pingroup *g;
+	unsigned long flags;
+	u32 val;
+
+	g = &msm_pinctrl_data->soc->groups[gpio];
+	if (g->wake_bit == -1)
+		return -ENOENT;
+
+	raw_spin_lock_irqsave(&msm_pinctrl_data->lock, flags);
+	val = readl_relaxed(msm_pinctrl_data->regs + g->wake_reg);
+	if (enable)
+		val |= BIT(g->wake_bit);
+	else
+		val &= ~BIT(g->wake_bit);
+
+	writel_relaxed(val, msm_pinctrl_data->regs + g->wake_reg);
+	raw_spin_unlock_irqrestore(&msm_pinctrl_data->lock, flags);
+
+	return 0;
+}
+EXPORT_SYMBOL(msm_gpio_mpm_wake_set);
 
 int msm_pinctrl_probe(struct platform_device *pdev,
 		      const struct msm_pinctrl_soc_data *soc_data)

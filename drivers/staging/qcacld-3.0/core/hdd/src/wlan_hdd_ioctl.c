@@ -6981,6 +6981,79 @@ static int drv_cmd_dummy(struct hdd_adapter *adapter,
 	return 0;
 }
 
+#ifdef FEATURE_SUPPORT_LGE
+extern void wlan_hdd_set_scan_suppress(uint8_t on_off);
+/*LGE_CHNAGE_S, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
+static int drv_cmd_set_scansuppress(struct hdd_adapter *adapter,
+			 struct hdd_context *hdd_ctx,
+			 uint8_t *command,
+			 uint8_t command_len,
+			 struct hdd_priv_data *priv_data)
+{
+	int ret;
+	uint8_t on_off = 0;
+	size_t len = 0;
+	hdd_err("[LGE_COMMAND]:%s: \"%s\"", adapter->dev->name, command);
+
+	len = strlen(command);
+	if (len != 18) {
+		hdd_err("Incorrect Strvalue");
+		return -EINVAL;
+	}
+
+	ret = kstrtou8(command + 17, 10, &on_off);
+	if (ret != 0) {
+		hdd_err("Error in conversion from int to str: %d", ret);
+		return -EINVAL;
+	}
+
+	if (on_off < 0 || on_off > 1) {
+		hdd_err("Incorrect Testvalue!!(%ld)", on_off);
+		return -EINVAL;
+	}
+
+	wlan_hdd_set_scan_suppress(on_off);
+	return 0;
+}
+
+static int drv_cmd_get_dbsmode(struct hdd_adapter *adapter,
+			 struct hdd_context *hdd_ctx,
+			 uint8_t *command,
+			 uint8_t command_len,
+			 struct hdd_priv_data *priv_data)
+{
+	char extra[32] = {'\0',};
+	uint8_t len = 0;
+	int ant_no = 0;
+	int rsdb_mode = 0; // default off
+	int status;
+	tSmeConfigParams smeConfig ;
+	mac_handle_t mac_handle;
+	status = wlan_hdd_validate_context(hdd_ctx);
+	if (status != 0) {
+		hdd_err("Fatal Error, this is not valid contxt!!, default non DBS");
+		hdd_exit();
+		return -EINVAL;
+    }
+	mac_handle = hdd_ctx->mac_handle;
+	sme_get_config_param(mac_handle, &smeConfig);
+	ant_no = (smeConfig.csrConfig.enable2x2 == 0) ? 1 : 2;
+	if ((ant_no == 2) && policy_mgr_is_current_hwmode_dbs(hdd_ctx->psoc)) {
+	    hdd_err("[LGE_COMMAND]:GET_RSDBMODE DBS mode is true");
+		rsdb_mode = 1; // rsdb on
+	}
+	len = scnprintf(extra, sizeof(extra), "%s %d", command, rsdb_mode);
+	if (copy_to_user(priv_data->buf, &extra, len)) {
+		hdd_err("Failed to copy data to user buffer");
+		hdd_exit();
+		return -EFAULT;
+	}
+    return 0;
+}
+
+/*LGE_CHNAGE_E, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
+#endif
+
 /*
  * handler for any unsupported wlan hdd driver command
  */
@@ -7628,6 +7701,12 @@ static const struct hdd_drv_cmd hdd_drv_cmds[] = {
 	{"RXFILTER-STOP",             drv_cmd_dummy, false},
 	{"BTCOEXSCAN-START",          drv_cmd_dummy, false},
 	{"BTCOEXSCAN-STOP",           drv_cmd_dummy, false},
+#ifdef FEATURE_SUPPORT_LGE
+/*LGE_CHNAGE_S, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
+	{"SET_SCANSUPPRESS",          drv_cmd_set_scansuppress, true}, //true or false??
+	{"GET_RSDBMODE",              drv_cmd_get_dbsmode, false},
+/*LGE_CHNAGE_E, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
+#endif
 };
 
 /**

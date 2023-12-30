@@ -403,6 +403,9 @@ int wlan_hdd_get_temperature(struct hdd_adapter *adapter, int *temperature);
  */
 int wlan_hdd_request_station_stats(struct hdd_adapter *adapter);
 
+#ifdef FEATURE_SUPPORT_LGE
+int wlan_hdd_get_sap_stats(struct hdd_adapter *adapter, struct station_info *info);
+#endif
 /**
  * wlan_hdd_display_txrx_stats() - display HDD txrx stats summary
  * @hdd_ctx: hdd context
