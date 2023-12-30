@@ -711,7 +711,7 @@ static int sw42000_get_tci_data(struct device *dev, int count)
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct sw42000_data *d = to_sw42000_data(dev);
 	u8 i = 0;
-	u32 rdata[MAX_LPWG_CODE+2];
+	u32 rdata[MAX_LPWG_CODE];
 
 	if (!count)
 		return 0;
@@ -725,9 +725,9 @@ static int sw42000_get_tci_data(struct device *dev, int count)
 		ts->lpwg.code[i].y = (rdata[i] >> 16) & 0xffff;
 
 		if (ts->lpwg.mode >= LPWG_PASSWORD)
-			TOUCH_I("LPWG data [%d] xxxx, xxxx\n", i);
+			TOUCH_I("LPWG data xxxx, xxxx\n");
 		else
-			TOUCH_I("LPWG data [%d] %d, %d\n", i,
+			TOUCH_I("LPWG data %d, %d\n",
 					ts->lpwg.code[i].x, ts->lpwg.code[i].y);
 	}
 	ts->lpwg.code[count].x = -1;

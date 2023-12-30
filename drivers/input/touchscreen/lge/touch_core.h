@@ -487,7 +487,7 @@ struct lpwg_info {
 	u8 qcover;
 	u8 code_num;
 	struct point area[2];
-	struct point code[MAX_LPWG_CODE+2];
+	struct point code[MAX_LPWG_CODE];
 };
 
 struct app_info {
