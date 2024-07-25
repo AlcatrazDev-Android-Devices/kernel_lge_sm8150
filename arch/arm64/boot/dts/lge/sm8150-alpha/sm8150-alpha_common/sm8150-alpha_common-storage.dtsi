@@ -59,3 +59,9 @@
 
 	status = "ok";
 };
+
+&firmware {
+    android {
+        /delete-node/ fstab;
+    };
+};
