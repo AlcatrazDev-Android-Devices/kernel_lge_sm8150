@@ -28,7 +28,7 @@ jobs:
         if: steps.cache-build-env.outputs.cache-hit != 'true'
         run: |
           wget -q "https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r487747c/-/archive/14.0/android_prebuilts_clang_host_linux-x86_clang-r487747c-14.0.zip"
-          mkdir clang && unzip -d /clang android_prebuilts_clang_host_linux-x86_clang-r487747c-14.0.zip 
+          mkdir clang && unzip -d clang android_prebuilts_clang_host_linux-x86_clang-r487747c-14.0.zip 
           rm -rf android_prebuilts_clang_host_linux-x86_clang-r487747c-14.0.zip
           cd ..
       - name: Save Android toolchain
