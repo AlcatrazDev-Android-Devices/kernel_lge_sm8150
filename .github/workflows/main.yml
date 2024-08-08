@@ -47,8 +47,8 @@ jobs:
       - name: Build kernel
         run: |
           export PATH="$(pwd)/clang/bin:$(pwd)/clang/aarch64-linux-gnu/bin:$(pwd)/clang/arm-linux-gnueabi/bin:$PATH"
-          exprot LLVM_HOME=$(pwd)/clang/bin
-          exprot PATH=$LLVM_HOME:$PATH
+          export LLVM_HOME=$(pwd)/clang/bin
+          export PATH=$LLVM_HOME:$PATH
           cd kernel
           make ARCH=arm64 O=out CC=clang LD=ld.lld CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CLANG_TRIPLE=aarch64-linux-gnu- vendor/lineageos_alpha.defconfig
           cd out && ../scripts/kconfig/merge_config.sh -m .config ../arch/arm64/configs/vendor/lineageos_alpha_defconfig && cd ..
