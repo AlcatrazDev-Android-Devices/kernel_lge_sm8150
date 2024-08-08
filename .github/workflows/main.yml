@@ -27,9 +27,12 @@ jobs:
       - name: Pull Android toolchain
         if: steps.cache-build-env.outputs.cache-hit != 'true'
         run: |
-          wget -q "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-14.0.0_r18/clang-r487747c.tar.gz" -O "lg.tar.gz"
-          mkdir clang && tar -zxvf lg.tar.gz clang
+          wget -q "https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r487747c/-/archive/14.0/android_prebuilts_clang_host_linux-x86_clang-r487747c-14.0.tar.gz" -O "lg.tar.gz"
+          mkdir clang 
+          cd clang
+          tar -zxvf lg.tar.gz
           rm -rf lg.tar.gz
+          cd ..
       - name: Save Android toolchain
         if: steps.cache-build-env.outputs.cache-hit != 'true'
         uses: actions/cache/save@v3
