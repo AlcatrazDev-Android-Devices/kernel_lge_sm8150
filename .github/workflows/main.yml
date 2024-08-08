@@ -15,7 +15,7 @@ jobs:
           lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev \
           libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc \
           zip zlib1g-dev python3 python3-pip python3-pexpect python3-setuptools python3-serial python3-yaml \
-          python-is-python3 git zstd 
+          python-is-python3 git zstd lld
       - name: Cache build env
         id: cache-build-env
         uses: actions/cache@v3
@@ -47,6 +47,7 @@ jobs:
       - name: Build kernel
         run: |
           export PATH="$(pwd)/clang/bin:$(pwd)/clang/aarch64-linux-gnu/bin:$(pwd)/clang/arm-linux-gnueabi/bin:$PATH"
+          llvm -v
           cd kernel
           make ARCH=arm64 O=out CC=clang LD=ld.lld CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CLANG_TRIPLE=aarch64-linux-gnu- vendor/lineageos_alpha.defconfig
           cd out && ../scripts/kconfig/merge_config.sh -m .config ../arch/arm64/configs/vendor/lineageos_alpha_defconfig && cd ..
