@@ -50,7 +50,7 @@ jobs:
           export LLVM_HOME=$(pwd)/clang/bin
           export PATH=$LLVM_HOME:$PATH
           cd kernel
-          make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CLANG_TRIPLE=aarch64-linux-gnu- vendor/lineageos_alpha.defconfig
+          make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CLANG_TRIPLE=aarch64-linux-gnu- vendor/lineageos_alpha_defconfig
           cd out && ../scripts/kconfig/merge_config.sh -m .config ../arch/arm64/configs/vendor/lineageos_alpha_defconfig && cd ..
           yes "" | make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CLANG_TRIPLE=aarch64-linux-gnu- oldconfig
           make -j$(nproc --all) ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- CLANG_TRIPLE=aarch64-linux-gnu- 2>&1 | tee build.log
