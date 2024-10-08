@@ -24,7 +24,7 @@
 };
 
 &soc {
-	wdog: qcom,wdt@17c10000{
+	wdog: qcom,wdt@17c10000 {
 		qcom,bark-time = <16000>;
 	};
 
